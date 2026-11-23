@@ -2,7 +2,7 @@
 """Kawalan aircond Samsung (SmartThings) melalui website.
 
 Jalankan:   python3 server.py          ->  buka http://localhost:8080
-Simulasi:   ST_FAKE=1 python3 server.py   (tanpa akaun Samsung)
+Simulasi:   python3 server.py --demo   (tanpa akaun Samsung)
 
 Hanya guna pustaka standard Python 3.8+, tiada pip install diperlukan.
 Token SmartThings disimpan di server sahaja dan tidak pernah dihantar ke browser.
@@ -54,7 +54,7 @@ CLIENT_ID = env("SMARTTHINGS_CLIENT_ID", "")
 CLIENT_SECRET = env("SMARTTHINGS_CLIENT_SECRET", "")
 REDIRECT_URI = env("SMARTTHINGS_REDIRECT_URI", "https://httpbin.org/get")
 FIXED_DEVICE = env("SMARTTHINGS_DEVICE_ID", "")
-FAKE = env("ST_FAKE", "") == "1"
+FAKE = env("ST_FAKE", "").strip() == "1" or "--demo" in sys.argv
 DATA_FILE = env("DATA_FILE", os.path.join(ROOT, "data.json"))
 
 

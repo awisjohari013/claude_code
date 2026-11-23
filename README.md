@@ -23,7 +23,7 @@ seperti telefon, tablet atau komputer, tanpa perlu buka app SmartThings.
 ## 1. Cuba dulu (simulasi, tanpa akaun Samsung)
 
 ```bash
-ST_FAKE=1 python3 server.py
+python3 server.py --demo      # Windows: python server.py --demo
 # buka http://localhost:8080
 ```
 
