@@ -1,130 +1,150 @@
-# ❄️ Kawalan Aircond melalui Website
+# ❄️ Kawalan Aircond Samsung melalui Website
 
-Kawal aircond anda dari telefon atau komputer **guna browser sahaja**, tanpa remote
-dan tanpa app. Sebuah board kecil ESP32 atau ESP8266 dengan LED inframerah (IR) menyamar
-sebagai remote aircond, dan board itu sendiri hos website kawalannya.
+Kawal aircond Samsung anda (yang disambung ke app **SmartThings**) dari mana-mana browser,
+seperti telefon, tablet atau komputer, tanpa perlu buka app SmartThings.
+**Tiada hardware tambahan diperlukan.**
 
 ```
- Telefon / PC  ──WiFi──►  ESP32 (website + API)  ──isyarat IR──►  Aircond
- http://aircond.local
+ Browser ──►  server.py (website anda)  ──SmartThings API──►  Awan Samsung  ──►  Aircond
 ```
 
-**Ciri-ciri:** hidup/mati, suhu 16–30 °C, mod (Sejuk / Kering / Kipas / Auto / Panas),
-kelajuan kipas, swing, turbo, eco, pemasa tutup automatik, login kata laluan, dan sokongan
-untuk lebih 70 jenama aircond (Daikin, Panasonic, Midea, Gree, Samsung, LG, Sharp, Mitsubishi,
-Haier, TCL, Toshiba, Hitachi, Carrier dan lain-lain) melalui library
-[IRremoteESP8266](https://github.com/crankyoldgit/IRremoteESP8266).
+**Ciri-ciri**
+- Hidup/mati dan tetapkan suhu
+- Mod (Sejuk, Kering, Kipas, Auto, Panas, AI…) dan kelajuan kipas
+- Mod khas Samsung (WindFree, Tidur, Senyap, Laju…) dan ayunan
+- **Suhu dan kelembapan bilik sebenar** daripada sensor aircond
+- Pemasa tutup automatik
+- Login kata laluan, dan sokongan beberapa aircond (pilih dari website)
+- Senarai mod dibina automatik ikut apa yang model aircond anda sokong
+- Python sahaja, **tiada `pip install`**
 
 ---
 
-## 1. Barang yang diperlukan (lebih kurang RM30)
-
-| Barang | Nota |
-|---|---|
-| ESP32 DevKit **atau** NodeMCU / Wemos D1 mini (ESP8266) | Mana-mana satu |
-| LED IR 940 nm (5 mm) | 1–2 biji, boleh selari untuk jarak lebih jauh |
-| Transistor NPN 2N2222 / S8050 | Supaya LED cukup terang |
-| Perintang 1 kΩ dan 47–100 Ω | |
-| Kabel USB + charger telefon 5V | Untuk bekalan kuasa tetap |
-
-## 2. Sambungan litar
-
-```
-GPIO4 ──[1kΩ]──► Base (B)  transistor NPN
-                 Emitter (E) ──► GND
-3V3/5V ──[68Ω]──► Anod LED IR (+, kaki panjang)
-                  Katod LED IR (−) ──► Collector (C)
-```
-
-* ESP32: GPIO4. NodeMCU/Wemos: pin **D2** (iaitu GPIO4).
-* Letak LED **menghala ke aircond**, nampak terus (macam remote biasa).
-
-## 3. Tetapan
-
-Edit `src/config.h`:
-
-```cpp
-#define WIFI_SSID     "NamaWiFiAnda"
-#define WIFI_PASSWORD "KataLaluanWiFi"
-#define WEB_USER      "admin"
-#define WEB_PASSWORD  "tukar-saya"   // WAJIB tukar
-#define DEFAULT_BRAND "DAIKIN"       // jenama aircond anda
-```
-
-## 4. Upload ke board
-
-1. Pasang [VS Code](https://code.visualstudio.com/) + extension **PlatformIO IDE**.
-2. Buka folder projek ini.
-3. Sambung board dengan USB, kemudian:
-   * ESP32: `pio run -e esp32 -t upload`
-   * ESP8266: `pio run -e esp8266 -t upload`
-4. Buka Serial Monitor (`pio device monitor`) untuk melihat alamat IP.
-
-## 5. Guna
-
-Buka **http://aircond.local** (atau alamat IP yang dipaparkan, cth `http://192.168.1.50`)
-di telefon. Log masuk dengan `WEB_USER` / `WEB_PASSWORD`.
-
-> 💡 Di telefon, pilih "Add to Home Screen" supaya ia nampak macam app.
-
-**Jika aircond tak respons:** buka ⚙️ *Tetapan jenama aircond* di bawah halaman, pilih
-jenama lain atau tukar model (1, 2, 3…), tekan *Simpan & uji*. Panduan ringkas:
-
-| Jenama aircond | Cuba protokol |
-|---|---|
-| Daikin | `DAIKIN`, `DAIKIN2`, `DAIKIN176` |
-| Panasonic | `PANASONIC_AC` (model 1–6) |
-| Midea, Acson, York, Toshiba (sesetengah) | `MIDEA`, `COOLIX` |
-| Gree, Cooltek | `GREE` |
-| Samsung | `SAMSUNG_AC` |
-| Sharp | `SHARP_AC` |
-| LG | `LG`, `LG2` |
-| Mitsubishi | `MITSUBISHI_AC`, `MITSUBISHI_HEAVY_152` |
-
-Masih tak jumpa? Pasang penerima IR (VS1838B) dan jalankan contoh `IRrecvDumpV2` daripada
-library IRremoteESP8266, kemudian tekan butang remote asal: ia akan beritahu nama protokol.
-
-## 6. Cuba website tanpa board (simulasi)
+## 1. Cuba dulu (simulasi, tanpa akaun Samsung)
 
 ```bash
-python3 tools/mock_server.py
+ST_FAKE=1 python3 server.py
 # buka http://localhost:8080
 ```
 
-## API (untuk integrasi, cth Home Assistant / Siri Shortcuts)
+## 2. Sambung ke aircond sebenar
+
+Perlu Python 3.8 atau lebih baharu. Salin fail tetapan dahulu:
+
+```bash
+cp .env.example .env
+```
+
+Kemudian pilih **satu** daripada dua cara di bawah.
+
+### Pilihan A: Token peribadi (PAT), untuk cubaan cepat (5 minit)
+
+> ⚠️ Sejak 30 Disember 2024, token peribadi baharu SmartThings **hanya sah 24 jam**.
+> Sesuai untuk mencuba sahaja. Untuk guna harian, pakai Pilihan B.
+
+1. Buka https://account.smartthings.com/tokens dan log masuk akaun Samsung.
+2. *Generate new token*, kemudian tanda **Devices**: *List all devices*, *See all devices*, *Control all devices*.
+3. Salin token itu ke `.env`: `SMARTTHINGS_TOKEN=xxxxxxxx-xxxx-...`
+4. Jalankan `python3 server.py` dan buka http://localhost:8080.
+
+### Pilihan B: OAuth, untuk guna jangka panjang (sekali sahaja, ~15 minit)
+
+Dengan cara ini server akan memperbaharui token secara automatik.
+
+1. Pasang [Node.js](https://nodejs.org/), kemudian pasang SmartThings CLI:
+   ```bash
+   npm install -g @smartthings/cli
+   smartthings apps:create
+   ```
+   (CLI akan minta anda log masuk akaun Samsung dalam browser.)
+2. Jawab soalan CLI:
+   - Jenis app: **OAuth-In App**
+   - Nama: cth `Aircond Web`. Huraian dan ikon boleh dilangkau.
+   - Skop: pilih **`r:devices:*`** dan **`x:devices:*`**
+   - Redirect URI: **`https://httpbin.org/get`**
+3. CLI akan paparkan **OAuth Client Id** dan **OAuth Client Secret**. Salin kedua-duanya
+   ke `.env` (`SMARTTHINGS_CLIENT_ID` dan `SMARTTHINGS_CLIENT_SECRET`). Rahsia ini hanya
+   dipaparkan sekali.
+4. Jalankan `python3 server.py`, buka website, dan tekan **Log masuk Samsung**.
+5. Selepas benarkan akses, anda akan sampai ke halaman `httpbin.org` yang ada `?code=...`
+   di alamatnya. Salin **keseluruhan alamat** itu, tampal dalam website, dan tekan **Sambung**.
+
+Siap. Token disimpan dalam `data.json` dan diperbaharui sendiri selagi server berjalan.
+Jika server dimatikan terlalu lama (lebih kurang sebulan), ulang langkah 4–5.
+
+> 💡 Jika website anda ada domain HTTPS sendiri, set Redirect URI kepada
+> `https://domain-anda/auth/callback` (dalam CLI dan `.env`) supaya tak perlu salin-tampal.
+
+## 3. Biar server sentiasa hidup
+
+Server perlu berjalan pada komputer yang sentiasa hidup, cth **Raspberry Pi**, PC lama,
+TV box Android (Termux) atau VPS murah. Contoh servis `systemd` untuk Raspberry Pi / Linux:
+
+```ini
+# /etc/systemd/system/aircond.service
+[Unit]
+Description=Kawalan Aircond Web
+After=network-online.target
+
+[Service]
+WorkingDirectory=/home/pi/claude_code
+ExecStart=/usr/bin/python3 server.py
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
+```
+```bash
+sudo systemctl enable --now aircond
+```
+
+## 4. Kawal dari luar rumah
+
+- **Paling selamat:** [Tailscale](https://tailscale.com/) (percuma). Pasang di server dan telefon,
+  kemudian buka `http://<nama-server>:8080` dari mana-mana.
+- **Alamat awam HTTPS:** [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+  (`cloudflared tunnel --url http://localhost:8080`). **Wajib** tetapkan `WEB_PASSWORD` yang kuat.
+- Jangan buka port router terus ke internet tanpa HTTPS.
+
+## API (untuk Siri Shortcuts, Home Assistant, dll.)
 
 | Kaedah | Laluan | Keterangan |
 |---|---|---|
-| `GET` | `/api/state` | Keadaan semasa |
-| `POST` | `/api/state` | Ubah tetapan; semua medan pilihan |
-| `GET` | `/api/brands` | Senarai jenama yang disokong |
+| `GET` | `/api/state` | Keadaan semasa, termasuk suhu bilik |
+| `POST` | `/api/state` | Ubah tetapan (semua medan pilihan) |
+| `GET` | `/api/devices` | Senarai aircond dalam akaun |
+| `POST` | `/api/device` | Pilih aircond: `{"id":"..."}` |
 
 ```bash
-curl -u admin:tukar-saya -X POST http://aircond.local/api/state \
+curl -u admin:katalaluan -X POST http://localhost:8080/api/state \
      -H 'Content-Type: application/json' \
      -d '{"power":true,"mode":"cool","temp":24,"fan":"auto","timer":120}'
 ```
 
-Medan: `power` (bool), `mode` (`cool|dry|fan|auto|heat`), `temp` (16–30),
-`fan` (`auto|low|medium|high`), `swing`, `turbo`, `econo` (bool), `timer` (minit, 0 = batal),
-`brand`, `model`, `send` (`false` = simpan tanpa hantar IR).
+Medan: `power` (bool), `mode` (cth `cool|dry|wind|auto|heat`), `temp`, `fan`
+(`auto|low|medium|high|turbo`), `swing` (`fixed|all|vertical|horizontal`), `option`
+(`off|windFree|sleep|quiet|speed`…), `timer` (minit, `0` = batal).
+Nilai yang diterima bergantung pada model, dan senarainya ada dalam `modes`, `fans`,
+`swings` dan `options` dalam respons `GET /api/state`.
 
-## Had & nota
+## Masalah biasa
 
-* IR hanya satu hala: jika anda guna remote asal, website tidak tahu perubahan itu.
-  Tekan mana-mana butang di website untuk "selaraskan" semula.
-* Website hanya boleh dibuka dalam WiFi rumah yang sama. Untuk kawal dari luar rumah,
-  guna VPN seperti [Tailscale](https://tailscale.com/) atau WireGuard pada router;
-  **jangan** buka port terus ke internet.
-* Pemasa tutup akan hilang jika board restart (tetapan lain kekal).
+| Masalah | Penyelesaian |
+|---|---|
+| "Token SmartThings tamat tempoh" | PAT sudah lebih 24 jam. Jana baharu, atau tukar ke OAuth |
+| "Tiada aircond dijumpai" | Pastikan aircond muncul dalam app SmartThings dengan akaun yang sama |
+| Butang ditekan tapi aircond tak berubah | Semak aircond "online" dalam app SmartThings (WiFi aircond) |
+| `invalid_grant` semasa log masuk | Kod hanya boleh guna sekali dan cepat tamat. Ulang log masuk |
 
 ## Struktur projek
 
 ```
-platformio.ini        Konfigurasi bina (ESP32 & ESP8266)
-src/config.h          Tetapan WiFi, login, pin, jenama
-src/main.cpp          Firmware: pelayan web + hantar IR
-web/index.html        Antara muka website (dibenam automatik ke firmware)
-tools/embed_html.py   Skrip pra-bina: index.html -> src/web_ui.h
-tools/mock_server.py  Simulasi untuk cuba website di komputer
+server.py        Server web + sambungan SmartThings API (Python, tiada pustaka luar)
+web/index.html   Antara muka website (mesra telefon, mod gelap automatik)
+.env.example     Contoh tetapan, salin ke .env
+esp32-ir/        Alternatif: kawal aircond BUKAN pintar guna ESP32 + LED IR
 ```
+
+`.env` dan `data.json` mengandungi rahsia. Kedua-duanya sudah dalam `.gitignore`,
+jadi jangan commit.

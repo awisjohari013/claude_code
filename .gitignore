@@ -1,4 +1,10 @@
+# Rahsia
+.env
+data.json
+data.json.tmp
+
+# Bina
 .pio/
-src/web_ui.h
+esp32-ir/src/web_ui.h
 __pycache__/
 .vscode/

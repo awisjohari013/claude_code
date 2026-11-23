@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Aircond Saya</title>
+<style>
+:root{
+  --bg:#eef2f7;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
+  --accent:#0284c7;--accent-soft:#e0f2fe;--on:#16a34a;--off:#dc2626;
+  --shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0b1220;--card:#131c2e;--text:#e2e8f0;--muted:#94a3b8;--line:#22304a;
+  --accent:#38bdf8;--accent-soft:#0c2a40;--on:#22c55e;--off:#f87171;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:440px;margin:0 auto;padding:16px 16px 40px}
+header{display:flex;align-items:center;justify-content:space-between;margin:4px 0 16px}
+h1{font-size:20px;margin:0}
+.status{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--on)}.dot.err{background:var(--off)}
+.card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:20px;margin-bottom:14px}
+.display{text-align:center;padding:28px 20px}
+.display .label{color:var(--muted);font-size:14px}
+.temp{font-size:84px;font-weight:700;letter-spacing:-3px;line-height:1;margin:8px 0;
+  font-variant-numeric:tabular-nums;transition:opacity .2s}
+.temp sup{font-size:32px;letter-spacing:0;vertical-align:42px;margin-left:2px}
+.off .temp,.off .sub{opacity:.3}
+.sub{color:var(--muted);font-size:14px;min-height:20px}
+.row{display:flex;gap:12px;align-items:center;justify-content:center;margin-top:18px}
+.round{width:64px;height:64px;border-radius:50%;border:1px solid var(--line);background:var(--card);
+  color:var(--text);font-size:30px;cursor:pointer;display:grid;place-items:center}
+.round:active{transform:scale(.95)}
+.power{width:84px;height:84px;font-size:0;border:none;background:var(--off);color:#fff;
+  box-shadow:0 6px 20px color-mix(in srgb,var(--off) 40%,transparent)}
+.power.on{background:var(--on);box-shadow:0 6px 20px color-mix(in srgb,var(--on) 40%,transparent)}
+.power svg{width:34px;height:34px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
+.chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:8px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:12px;
+  padding:10px 4px;font:inherit;font-size:14px;cursor:pointer}
+.chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.toggle{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.toggle:first-of-type{border-top:none}
+.switch{position:relative;width:48px;height:28px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.switch span{position:absolute;inset:0;background:var(--line);border-radius:28px;transition:.2s;cursor:pointer}
+.switch span:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked+span{background:var(--accent)}
+.switch input:checked+span:before{transform:translateX(20px)}
+select,input[type=number]{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);
+  background:var(--bg);color:var(--text);font:inherit}
+label.f{display:block;font-size:14px;color:var(--muted);margin:10px 0 6px}
+.btn{width:100%;margin-top:14px;padding:12px;border:none;border-radius:12px;background:var(--accent);
+  color:#fff;font:inherit;font-weight:600;cursor:pointer}
+details summary{cursor:pointer;color:var(--muted);font-size:14px;list-style:none}
+details summary::-webkit-details-marker{display:none}
+.hint{font-size:13px;color:var(--muted);margin-top:10px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,80px);background:var(--text);color:var(--bg);
+  padding:10px 16px;border-radius:12px;font-size:14px;transition:transform .25s;max-width:calc(100% - 32px)}
+.toast.show{transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>❄️ Aircond Saya</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">Menyambung…</span></div>
+  </header>
+
+  <section class="card display" id="display">
+    <div class="label" id="brandLabel">—</div>
+    <div class="temp"><span id="temp">--</span><sup>°C</sup></div>
+    <div class="sub" id="sub">&nbsp;</div>
+    <div class="row">
+      <button class="round" id="down" aria-label="Turunkan suhu">−</button>
+      <button class="round power" id="power" aria-label="Hidup / Mati">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></svg>
+      </button>
+      <button class="round" id="up" aria-label="Naikkan suhu">+</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Mod</h2>
+    <div class="chips" data-key="mode">
+      <button class="chip" data-v="cool">❄️ Sejuk</button>
+      <button class="chip" data-v="dry">💧 Kering</button>
+      <button class="chip" data-v="fan">🌀 Kipas</button>
+      <button class="chip" data-v="auto">🅰️ Auto</button>
+      <button class="chip" data-v="heat">🔥 Panas</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Kelajuan Kipas</h2>
+    <div class="chips" data-key="fan">
+      <button class="chip" data-v="auto">Auto</button>
+      <button class="chip" data-v="low">Rendah</button>
+      <button class="chip" data-v="medium">Sederhana</button>
+      <button class="chip" data-v="high">Tinggi</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="toggle"><span>Swing (ayun)</span><label class="switch"><input type="checkbox" data-key="swing"><span></span></label></div>
+    <div class="toggle"><span>Turbo</span><label class="switch"><input type="checkbox" data-key="turbo"><span></span></label></div>
+    <div class="toggle"><span>Jimat tenaga (Eco)</span><label class="switch"><input type="checkbox" data-key="econo"><span></span></label></div>
+  </section>
+
+  <section class="card">
+    <h2>Pemasa Tutup</h2>
+    <div class="chips" data-key="timer">
+      <button class="chip" data-v="0">Tiada</button>
+      <button class="chip" data-v="30">30 min</button>
+      <button class="chip" data-v="60">1 jam</button>
+      <button class="chip" data-v="120">2 jam</button>
+      <button class="chip" data-v="240">4 jam</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>⚙️ Tetapan jenama aircond</summary>
+      <label class="f" for="brand">Jenama / protokol</label>
+      <select id="brand"><option>Memuatkan…</option></select>
+      <label class="f" for="model">Model (biasanya 1)</label>
+      <input type="number" id="model" min="-1" max="10" value="1">
+      <button class="btn" id="saveBrand">Simpan &amp; uji (hidupkan aircond)</button>
+      <p class="hint">Jika aircond tidak memberi respons, cuba jenama/model lain.
+        Contoh: Daikin → DAIKIN, Panasonic → PANASONIC_AC, Midea/Acson/York → MIDEA atau COOLIX,
+        Gree → GREE, Samsung → SAMSUNG_AC, Sharp → SHARP_AC.</p>
+    </details>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const MODE_LABEL={cool:"Sejuk",dry:"Kering",fan:"Kipas",auto:"Auto",heat:"Panas"};
+const FAN_LABEL={auto:"Auto",low:"Rendah",medium:"Sederhana",high:"Tinggi"};
+const $=id=>document.getElementById(id);
+let S=null,tempTimer=null;
+
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2200)}
+function setStatus(ok,text){$("dot").className="dot "+(ok?"ok":"err");$("statusText").textContent=text}
+
+function render(){
+  if(!S)return;
+  $("display").classList.toggle("off",!S.power);
+  $("power").classList.toggle("on",S.power);
+  $("temp").textContent=S.temp;
+  $("brandLabel").textContent=S.brand.replace(/_/g," ");
+  $("sub").textContent=S.power
+    ?`${MODE_LABEL[S.mode]} · Kipas ${FAN_LABEL[S.fan]}`+(S.timer?` · Tutup dalam ${S.timer} min`:"")
+    :"Dimatikan";
+  document.querySelectorAll(".chips").forEach(g=>{
+    const k=g.dataset.key;
+    let cur=String(S[k]);
+    if(k==="timer"){ // tonjolkan pilihan pemasa terdekat
+      const opts=[...g.children].map(b=>+b.dataset.v);
+      cur=String(S.timer?opts.filter(v=>v>0).reduce((a,b)=>Math.abs(b-S.timer)<Math.abs(a-S.timer)?b:a):0);
+    }
+    g.querySelectorAll(".chip").forEach(b=>b.classList.toggle("active",b.dataset.v===cur));
+  });
+  document.querySelectorAll("input[type=checkbox][data-key]").forEach(i=>i.checked=!!S[i.dataset.key]);
+}
+
+async function api(path,body){
+  const r=await fetch(path,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{});
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  return r.json();
+}
+
+async function update(patch,msg){
+  Object.assign(S,patch);render();
+  try{
+    S=await api("/api/state",patch);render();
+    setStatus(true,"Bersambung");
+    if(S.irOk===false)toast("⚠️ Jenama tidak disokong, semak tetapan");
+    else if(msg)toast(msg);
+  }catch(e){setStatus(false,"Gagal");toast("❌ Tidak dapat hubungi peranti")}
+}
+
+async function load(){
+  try{S=await api("/api/state");render();setStatus(true,"Bersambung")}
+  catch(e){setStatus(false,"Tiada sambungan")}
+}
+
+$("power").onclick=()=>update({power:!S.power},S.power?"Aircond dimatikan":"Aircond dihidupkan");
+function bump(d){
+  if(!S)return;
+  S.temp=Math.min(30,Math.max(16,S.temp+d));render();
+  clearTimeout(tempTimer);
+  tempTimer=setTimeout(()=>{tempTimer=null;update({temp:S.temp,power:true})},450); // tunggu jari berhenti tekan
+}
+$("up").onclick=()=>bump(1);
+$("down").onclick=()=>bump(-1);
+
+document.querySelectorAll(".chips").forEach(g=>g.addEventListener("click",e=>{
+  const b=e.target.closest(".chip");if(!b||!S)return;
+  const k=g.dataset.key;
+  if(k==="timer"){
+    const m=+b.dataset.v;
+    if(m&&!S.power){toast("Hidupkan aircond dahulu");return}
+    update({timer:m,send:false},m?`Aircond akan ditutup dalam ${b.textContent}`:"Pemasa dibatalkan");
+  }else update({[k]:b.dataset.v,power:true});
+}));
+document.querySelectorAll("input[type=checkbox][data-key]").forEach(i=>
+  i.addEventListener("change",()=>update({[i.dataset.key]:i.checked})));
+
+$("saveBrand").onclick=()=>update({brand:$("brand").value,model:+$("model").value||1,power:true},
+  "Isyarat dihantar. Aircond hidup? Jika ya, tetapan betul ✔");
+
+async function loadBrands(){
+  try{
+    const list=(await api("/api/brands")).sort();
+    $("brand").innerHTML=list.map(b=>`<option>${b}</option>`).join("");
+    if(S){$("brand").value=S.brand;$("model").value=S.model}
+  }catch(e){}
+}
+
+load().then(loadBrands);
+setInterval(()=>{if(!document.hidden&&!tempTimer)load()},15000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)load()});
+</script>
+</body>
+</html>
