@@ -8,3 +8,4 @@ data.json.tmp
 esp32-ir/src/web_ui.h
 __pycache__/
 .vscode/
+data-demo.json

@@ -55,7 +55,9 @@ CLIENT_SECRET = env("SMARTTHINGS_CLIENT_SECRET", "")
 REDIRECT_URI = env("SMARTTHINGS_REDIRECT_URI", "https://httpbin.org/get")
 FIXED_DEVICE = env("SMARTTHINGS_DEVICE_ID", "")
 FAKE = env("ST_FAKE", "").strip() == "1" or "--demo" in sys.argv
-DATA_FILE = env("DATA_FILE", os.path.join(ROOT, "data.json"))
+# Mod demo guna fail berasingan supaya data palsu tidak bercampur dengan akaun sebenar.
+DATA_FILE = env("DATA_FILE", os.path.join(ROOT, "data-demo.json" if FAKE else "data.json"))
+GUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
 class ApiError(Exception):
@@ -272,8 +274,10 @@ def list_aircons():
 
 
 def current_device():
-    dev = FIXED_DEVICE or store.get("device_id")
-    if dev:
+    if FIXED_DEVICE:
+        return FIXED_DEVICE
+    dev = store.get("device_id")
+    if dev and (FAKE or GUID.match(dev)):
         return dev
     acs = list_aircons()
     if not acs:
@@ -483,7 +487,16 @@ class Handler(BaseHTTPRequestHandler):
         if mode == "none":
             return self._send(200, {"configured": False, **setup})
         dev = current_device()
-        state = normalize(st.status(dev))
+        try:
+            status = st.status(dev)
+        except ApiError as e:
+            # Peranti disimpan sudah tiada / tidak sah: pilih semula secara automatik.
+            if FIXED_DEVICE or e.status not in (400, 403, 404):
+                raise
+            store.set(device_id=None, device_label=None)
+            dev = current_device()
+            status = st.status(dev)
+        state = normalize(status)
         label = store.get("device_label") if store.get("device_id") == dev else None
         self._send(200, {"configured": True, **setup, "device": {"id": dev, "label": label or "Aircond"},
                          **state})
