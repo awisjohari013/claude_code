@@ -1,0 +1,4 @@
+.pio/
+src/web_ui.h
+__pycache__/
+.vscode/
